@@ -11,3 +11,58 @@ library(tidyverse)
 set.seed(235)
 ```
 
+# Problem 1
+
+## Write a function that, for a fixed group size, randomly draws “birthdays” for each person; checks whether there are duplicate birthdays in the group; and returns TRUE or FALSE based on the result.
+
+Write the function.
+
+```{r}
+duplicate_birthday <- function(n) {
+birthdays <- sample(1:365, size = n, replace = TRUE)
+any(duplicated(birthdays))
+}
+```
+
+Check returns.
+
+```{r}
+duplicate_birthday(2)
+duplicate_birthday(23)
+duplicate_birthday(50)
+```
+
+## Next, run this function 10000 times for each group size between 2 and 50. For each group size, compute the probability that at least two people in the group will share a birthday by averaging across the 10000 simulation runs. Make a plot showing the probability as a function of group size, and comment on your results.
+
+Create a tibble.
+
+```{r}
+n <- 2:50
+repeats <- 10000
+
+prob <- numeric(length(n))
+
+for (i in seq_along(n)) {
+  group_size <- n[i]
+  prob[i] <- mean(replicate(repeats, duplicate_birthday(group_size)))
+}
+
+prob_list <- tibble(n = n, probability = prob)
+
+```
+
+draw a plot.
+
+```{r}
+ggplot(prob_list, aes(x = n, y = prob)) +
+geom_line() +
+geom_point() +
+scale_x_continuous(breaks = seq(0, 50, by = 5)) +
+labs(title = "Probability that at least two people share a birthday",
+x = "Group size (n)",
+y = "Probability") +
+theme_minimal(base_size = 12)
+```
+
+As n increases, the probability of shared birthdays rises quickly; at around n = 23, it’s already about 0.5.
+
