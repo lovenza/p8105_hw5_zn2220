@@ -66,3 +66,71 @@ theme_minimal(base_size = 12)
 
 As n increases, the probability of shared birthdays rises quickly; at around n = 23, it’s already about 0.5.
 
+# Problem 2
+
+```{r}
+run_t_sim <- function(mu, n = 30, sigma = 5, repeats = 5000, alpha = 0.05) {
+tibble(rep = 1:repeats) %>%
+mutate(
+data = map(rep, ~ rnorm(n, mean = mu, sd = sigma)),
+test = map(data, ~ broom::tidy(t.test(.x, mu = 0))),
+estimate = map_dbl(test, "estimate"),
+p_value = map_dbl(test, "p.value"),
+reject = p_value < alpha
+)
+}
+
+mus <- 1:6
+
+results_p2 <- data.frame(
+  mu = numeric(),
+  power = numeric(),
+  mean_est_all = numeric(),
+  mean_est_reject = numeric()
+)
+
+for (m in mus) {
+  df <- run_t_sim(mu = m)
+  
+  power <- mean(df$reject)
+  mean_est_all <- mean(df$estimate)
+  mean_est_reject <- if (any(df$reject)) mean(df$estimate[df$reject]) else NA
+  
+  results_p2 <- rbind(
+    results_p2,
+    data.frame(
+      mu = m,
+      power = power,
+      mean_est_all = mean_est_all,
+      mean_est_reject = mean_est_reject
+    )
+  )
+}
+
+
+results_p2
+
+```
+
+```{r}
+ggplot(results_p2, aes(x = mu, y = power)) +
+geom_line() + geom_point() +
+labs(title = "Power of one-sample t-test vs effect size",
+x = "True mean μ",
+y = "Power (proportion rejected)") +
+theme_minimal(base_size = 12)
+```
+
+```{r}
+results_p2_long <- results_p2 %>%
+pivot_longer(cols = c(mean_est_all, mean_est_reject),
+names_to = "which", values_to = "mean_est")
+
+ggplot(results_p2_long, aes(x = mu, y = mean_est, color = which)) +
+geom_line() + geom_point() +
+labs(title = "Average μ̂ across all vs only rejected samples",
+x = "True μ",
+y = "Average estimate μ̂",
+color = "Sample type") +
+theme_minimal(base_size = 12)
+```
