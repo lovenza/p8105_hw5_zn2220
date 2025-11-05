@@ -68,69 +68,92 @@ As n increases, the probability of shared birthdays rises quickly; at around n =
 
 # Problem 2
 
+### Set up
+
 ```{r}
 run_t_sim <- function(mu, n = 30, sigma = 5, repeats = 5000, alpha = 0.05) {
-tibble(rep = 1:repeats) %>%
-mutate(
-data = map(rep, ~ rnorm(n, mean = mu, sd = sigma)),
-test = map(data, ~ broom::tidy(t.test(.x, mu = 0))),
-estimate = map_dbl(test, "estimate"),
-p_value = map_dbl(test, "p.value"),
-reject = p_value < alpha
-)
+  tibble(rep = 1:repeats) %>%
+    mutate(
+      data = map(rep, ~ rnorm(n, mean = mu, sd = sigma)),
+      test = map(data, ~ broom::tidy(t.test(.x, mu = 0))),
+      mu_hat = map_dbl(test, "estimate"),
+      p_value = map_dbl(test, "p.value"),
+      reject = p_value < alpha
+    )
 }
 
-mus <- 1:6
+mus <- 0:6
 
 results_p2 <- data.frame(
   mu = numeric(),
   power = numeric(),
-  mean_est_all = numeric(),
-  mean_est_reject = numeric()
+  mean_mu_hat_all = numeric(),
+  mean_mu_hat_reject = numeric()
 )
 
 for (m in mus) {
   df <- run_t_sim(mu = m)
   
   power <- mean(df$reject)
-  mean_est_all <- mean(df$estimate)
-  mean_est_reject <- if (any(df$reject)) mean(df$estimate[df$reject]) else NA
+  mean_mu_hat_all <- mean(df$mu_hat)
+  mean_mu_hat_reject <- if (any(df$reject)) mean(df$mu_hat[df$reject]) else NA
   
   results_p2 <- rbind(
     results_p2,
     data.frame(
       mu = m,
       power = power,
-      mean_est_all = mean_est_all,
-      mean_est_reject = mean_est_reject
+      mean_mu_hat_all = mean_mu_hat_all,
+      mean_mu_hat_reject = mean_mu_hat_reject
     )
   )
 }
 
-
 results_p2
-
 ```
+
+### Plot 1
 
 ```{r}
 ggplot(results_p2, aes(x = mu, y = power)) +
-geom_line() + geom_point() +
-labs(title = "Power of one-sample t-test vs effect size",
-x = "True mean μ",
-y = "Power (proportion rejected)") +
-theme_minimal(base_size = 12)
+  geom_line(size = 1) + 
+  geom_point(size = 2) +
+  labs(
+    title = "Power of One-Sample t-Test vs Effect Size",
+    x = expression("True Mean " ~ mu),
+    y = "Power (Proportion Rejected)"
+  ) +
+  theme_minimal(base_size = 12)
 ```
+
+The plot shows a strong, positive, non-linear relationship between true mean (μ) and test power: when μ=0, power ≈0.05 (the Type I error rate), and as μ increases, power rises quickly—exceeding 0.5 by μ=2 and approaching 1.0 by μ=4, indicating that larger effect sizes yield higher statistical power.
+
+### Plot 2
 
 ```{r}
 results_p2_long <- results_p2 %>%
-pivot_longer(cols = c(mean_est_all, mean_est_reject),
-names_to = "which", values_to = "mean_est")
+  pivot_longer(
+    cols = c(mean_mu_hat_all, mean_mu_hat_reject),
+    names_to = "sample_type",
+    values_to = "mean_mu_hat"
+  )
 
-ggplot(results_p2_long, aes(x = mu, y = mean_est, color = which)) +
-geom_line() + geom_point() +
-labs(title = "Average μ̂ across all vs only rejected samples",
-x = "True μ",
-y = "Average estimate μ̂",
-color = "Sample type") +
-theme_minimal(base_size = 12)
+ggplot(results_p2_long, aes(x = mu, y = mean_mu_hat, color = sample_type)) +
+  geom_line(size = 1) + 
+  geom_point(size = 2) +
+  labs(
+    title = expression("Average " * hat(mu) * " Across All vs Rejected Samples"),
+    x = expression("True Mean " ~ mu),
+    y = expression("Average Estimate " * hat(mu)),
+    color = "Sample Type"
+  ) +
+  scale_color_manual(
+    labels = c("All Samples", "Only Rejected H0"),
+    values = c("navy", "red")
+  ) +
+  theme_minimal(base_size = 12)
+
 ```
+
+
+No, the average μ̂ from only the rejected samples (red line) is not equal to the true μ, especially for small effect sizes. The blue line (all samples) is unbiased and follows y = x, but the red line is biased upward when power is low—for instance, when μ = 1, the average μ̂ exceeds 2. This occurs due to selection bias or the “winner’s curse”: only simulations with unusually large random deviations achieve significance (p < 0.05), inflating the estimated effect. As μ increases and power approaches 1, nearly all tests are significant, eliminating this bias and causing the red and blue lines to converge.
