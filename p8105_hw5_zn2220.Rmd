@@ -157,3 +157,81 @@ ggplot(results_p2_long, aes(x = mu, y = mean_mu_hat, color = sample_type)) +
 
 
 No, the average μ̂ from only the rejected samples (red line) is not equal to the true μ, especially for small effect sizes. The blue line (all samples) is unbiased and follows y = x, but the red line is biased upward when power is low—for instance, when μ = 1, the average μ̂ exceeds 2. This occurs due to selection bias or the “winner’s curse”: only simulations with unusually large random deviations achieve significance (p < 0.05), inflating the estimated effect. As μ increases and power approaches 1, nearly all tests are significant, eliminating this bias and causing the red and blue lines to converge.
+
+# Problem 3
+
+## Describe the raw data. Create a city_state variable (e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
+
+```{r}
+data_url <- "https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv"
+homicides_raw <- read_csv(data_url)
+
+summary(homicides_raw)
+
+city_summary <- homicides_raw %>%
+  mutate(city_state = str_c(city, state, sep = ", ")) %>%
+  group_by(city_state) %>%
+  summarize(
+    total_homicides = n(),
+    unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))
+  ) %>%
+  ungroup()
+```
+
+## For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+
+```{r}
+baltimore_data <- city_summary %>%
+  filter(city_state == "Baltimore, MD")
+
+baltimore_prop_test <- prop.test(
+  x = baltimore_data$unsolved_homicides,
+  n = baltimore_data$total_homicides
+)
+
+baltimore_tidy <- broom::tidy(baltimore_prop_test)
+
+baltimore_tidy
+```
+
+## Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
+
+```{r}
+city_proportions_tidy <- city_summary %>%
+  mutate(
+    prop_test_obj = map2(unsolved_homicides, total_homicides, 
+                         ~ prop.test(x = .x, n = .y))
+  ) %>%
+  mutate(
+    tidy_results = map(prop_test_obj, broom::tidy)
+  ) %>%
+  unnest(tidy_results) %>%
+  select(
+    city_state, 
+    total_homicides, 
+    unsolved_homicides, 
+    estimate, 
+    conf.low, 
+    conf.high
+  )
+
+summary(city_proportions_tidy)
+```
+
+## Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
+
+```{r}
+ggplot(city_proportions_tidy, 
+       aes(x = reorder(city_state, estimate), y = estimate)) +
+  geom_point(color = "darkblue") +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  coord_flip() +
+  labs(
+    title = "Proportion of Unsolved Homicides by U.S. City",
+    subtitle = "Estimates and 95% Confidence Intervals",
+    x = "City",
+    y = "Estimated Proportion of Unsolved Homicides"
+  ) +
+  theme_minimal(base_size = 12) +
+  scale_y_continuous(labels = scales::percent_format())
+```
