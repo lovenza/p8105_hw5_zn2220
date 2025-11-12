@@ -49,6 +49,7 @@ for (i in seq_along(n)) {
 
 prob_list <- tibble(n = n, probability = prob)
 
+prob_list
 ```
 
 draw a plot.
