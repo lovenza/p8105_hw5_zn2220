@@ -64,7 +64,7 @@ y = "Probability") +
 theme_minimal(base_size = 12)
 ```
 
-As n increases, the probability of shared birthdays rises quickly; at around n = 23, it’s already about 0.5.
+This plot shows the simulated probability that at least two people in a group share a birthday. The probability rises sharply as the group size (n) increases. As the plot shows, the probability crosses the 50% threshold at a group size of n = 23. By the time the group size reaches 50, our simulation shows the probability of a shared birthday is approximately 97%.
 
 # Problem 2
 
@@ -126,7 +126,7 @@ ggplot(results_p2, aes(x = mu, y = power)) +
   theme_minimal(base_size = 12)
 ```
 
-The plot shows a strong, positive, non-linear relationship between true mean (μ) and test power: when μ=0, power ≈0.05 (the Type I error rate), and as μ increases, power rises quickly—exceeding 0.5 by μ=2 and approaching 1.0 by μ=4, indicating that larger effect sizes yield higher statistical power.
+This plot illustrates the relationship between the true effect size (the true mean, $\mu$) and the statistical power of the t-test. When the null hypothesis is true ($\mu=0$), the power is approximately 5%, which correctly matches our $\alpha$-level (the Type I error rate). As the effect size $\mu$ increases, the power grows non-linearly, surpassing 80% power at around $\mu=3$ and approaching 100% for effect sizes of 4 or more.
 
 ### Plot 2
 
@@ -156,7 +156,11 @@ ggplot(results_p2_long, aes(x = mu, y = mean_mu_hat, color = sample_type)) +
 ```
 
 
-No, the average μ̂ from only the rejected samples (red line) is not equal to the true μ, especially for small effect sizes. The blue line (all samples) is unbiased and follows y = x, but the red line is biased upward when power is low—for instance, when μ = 1, the average μ̂ exceeds 2. This occurs due to selection bias or the “winner’s curse”: only simulations with unusually large random deviations achieve significance (p < 0.05), inflating the estimated effect. As μ increases and power approaches 1, nearly all tests are significant, eliminating this bias and causing the red and blue lines to converge.
+This plot compares the average estimated $\hat{\mu}$ from all samples (blue line) versus the average $\hat{\mu}$ from only samples where the null hypothesis was rejected (red line).
+
+  + The blue line (all samples) falls almost perfectly on the y=x line, demonstrating that the sample mean $\hat{\mu}$ is an unbiased estimator of the true $\mu$.
+
+  + The red line (rejected samples) shows a significant upward bias when power is low (i.e., for small true values of $\mu$). This is a classic example of selection bias, or the "winner's curse." When the true effect is small, only the simulations that, by random chance, produce an unusually large $\hat{\mu}$ will be "significant" (p < 0.05). By averaging only these "winners," we get an inflated estimate. As the true $\mu$ increases, power approaches 100%, meaning nearly all tests are significant. At that point, the selection bias disappears, and the red line converges with the blue line.
 
 # Problem 3
 
@@ -178,6 +182,8 @@ city_summary <- homicides_raw %>%
   ungroup()
 ```
 
+The raw data contains 52,179 observations, representing individual homicide reports. The summary() output shows key variables: uid (a unique ID), reported_date, victim demographics (race, age, sex), location (city, state), and disposition. The disposition variable is critical, as it tells us whether a case was "Closed without arrest" or "Open/No arrest," which we will use to define "unsolved."
+
 ## For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
 
 ```{r}
@@ -193,6 +199,8 @@ baltimore_tidy <- broom::tidy(baltimore_prop_test)
 
 baltimore_tidy
 ```
+
+For the city of Baltimore, MD, the prop.test function estimates the proportion of unsolved homicides to be 64.6%. The 95% confidence interval for this estimate is [62.8%, 66.3%], suggesting we are highly confident that the true proportion lies within this range.
 
 ## Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
 
@@ -235,3 +243,7 @@ ggplot(city_proportions_tidy,
   theme_minimal(base_size = 12) +
   scale_y_continuous(labels = scales::percent_format())
 ```
+
+This plot displays the estimated proportion of unsolved homicides and their 95% confidence intervals for all 50 cities, sorted from the lowest proportion to the highest.
+
+There is dramatic variation across cities. Some cities, like Richmond, VA, have unsolved rates below 30%, while others, like Chicago, IL, have rates exceeding 70%. The error bars represent our uncertainty in these estimates. Cities with fewer total homicides (and thus smaller sample sizes) tend to have wider confidence intervals, indicating more uncertainty about the true proportion. Conversely, cities with many cases, like Baltimore, MD, have very narrow confidence intervals.
